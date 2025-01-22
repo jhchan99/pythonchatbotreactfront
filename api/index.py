@@ -47,3 +47,23 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
+
+# Add to your index.py, at the bottom
+if __name__ == "__main__":
+    from flask import Flask, request, jsonify
+    from flask_cors import CORS
+    
+    app = Flask(__name__)
+    CORS(app)
+    
+    @app.route('/api/chat', methods=['POST', 'OPTIONS'])
+    def chat_endpoint():
+        if request.method == 'OPTIONS':
+            return '', 200
+            
+        # Use your existing handle_chat function
+        response_data, status_code = handle_chat(request.json)
+        return jsonify(response_data), status_code
+
+    print("Starting development server on port 8000...")
+    app.run(port=8000, debug=True)
