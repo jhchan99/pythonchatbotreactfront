@@ -1,5 +1,5 @@
 from http.server import BaseHTTPRequestHandler
-from SwornOfficerChatbot import ContentChatbot
+from .SwornOfficerChatbot import ContentChatbot
 import json
 
 chatbot = ContentChatbot()
