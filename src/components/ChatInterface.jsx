@@ -44,6 +44,11 @@ const ChatInterface = () => {
 
   return (
     <div className="w-full h-screen flex flex-col bg-gray-900">
+      
+      <div className="w-full bg-gray-800 p-4 text-center border-b border-gray-700">
+        <h1 className="text-2xl font-bold text-white">Custom SwornChat Bot</h1>
+      </div>
+
       <div className="flex-1 w-full overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
