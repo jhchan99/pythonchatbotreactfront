@@ -51,6 +51,7 @@ class ContentChatbot:
     def search_content(self, query, top_k=3):
         """Search content from the sworn-text-content namespace"""
         query_embedding = self.generate_embedding(query)
+        used_sources = []  # We'll collect sources here
         
         try:
             results = index.query(
@@ -59,10 +60,18 @@ class ContentChatbot:
                 top_k=top_k,
                 include_metadata=True
             )
-            return results, None  # Keeping the dual return for compatibility
+            
+            # Collect sources from metadata
+            if results and hasattr(results, 'matches'):
+                for match in results.matches:
+                    source = match.metadata.get('text-source', 'Unknown source')
+                    if source not in used_sources:
+                        used_sources.append(source)
+            
+            return results, used_sources  # Return both results and sources
         except Exception as e:
-            print(f"Error searching content: {str(e)}")  # Adding error logging
-            return None, None
+            print(f"Error searching content: {str(e)}")
+            return None, []
 
     def safe_get_metadata(self, match):
         """Safely extract metadata from a match"""
@@ -124,10 +133,9 @@ class ContentChatbot:
             return f"I apologize, but I encountered an error generating a response. Please try asking your question in a different way."
 
     def chat(self, user_input):
-        """Main chat function that processes user input and returns a response"""
         try:
-            video_results, content_results = self.search_content(user_input)
-            context = self.format_context(video_results, content_results)
+            video_results, used_sources = self.search_content(user_input)
+            context = self.format_context(video_results, None)  # Keep existing context building
             response = self.generate_response(user_input, context)
 
             # Update conversation history
@@ -136,10 +144,16 @@ class ContentChatbot:
             if len(self.conversation_history) > 6:
                 self.conversation_history = self.conversation_history[-6:]
 
-            return response
+            return {
+                "response": response,
+                "sources": used_sources  # Include sources in response
+            }
 
         except Exception as e:
-            return f"I apologize, but I encountered an error: {type(e).__name__} - {str(e)}"
+            return {
+                "response": f"I apologize, but I encountered an error: {type(e).__name__} - {str(e)}", 
+                "sources": []
+            }
 
 
 def main():

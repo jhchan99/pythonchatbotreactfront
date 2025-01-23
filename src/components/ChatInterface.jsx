@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import Message from './Messaging';
 
@@ -6,6 +6,10 @@ const ChatInterface = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  const addMessage = useCallback((message) => {
+    setMessages(prevMessages => [...prevMessages, message]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -13,17 +17,22 @@ const ChatInterface = () => {
 
     const userMessage = input.trim();
     setInput('');
-    
-    const messageId = Date.now();
-    
-    const updatedMessages = [
-      ...messages,
-      { id: messageId, role: 'user', content: userMessage }
-    ];
-    setMessages(updatedMessages);
     setIsLoading(true);
 
+    // Create message objects with unique timestamps
+    const timestamp = Date.now();
+    const userMessageObj = {
+      id: `user-${timestamp}`,
+      role: 'user',
+      content: userMessage,
+      timestamp
+    };
+
     try {
+      // Add user message immediately
+      addMessage(userMessageObj);
+
+      // Make API call
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -32,26 +41,42 @@ const ChatInterface = () => {
         body: JSON.stringify({ message: userMessage }),
       });
 
-      const data = await response.json();
-      
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response');
+        throw new Error('Failed to get response');
       }
 
-      setMessages(currentMessages => [
-        ...currentMessages,
-        { id: messageId, role: 'assistant', content: data.response }
-      ]);
+      const data = await response.json();
+
+      // Ensure we have a valid response object
+      if (!data || !data.response) {
+        throw new Error('Invalid response format');
+      }
+
+      // Create bot message object
+      const botMessageObj = {
+        id: `bot-${timestamp}`,
+        role: 'assistant',
+        content: data.response.response || data.response, // Handle both response formats
+        sources: data.response.sources || data.sources || [], // Handle both source formats
+        timestamp: timestamp + 1
+      };
+
+      // Add bot message
+      addMessage(botMessageObj);
+
     } catch (error) {
-      console.error('Error:', error);
-      setMessages(currentMessages => [
-        ...currentMessages,
-        { 
-          id: messageId,
-          role: 'assistant', 
-          content: 'Sorry, there was an error processing your request.' 
-        }
-      ]);
+      console.error('Chat error:', error);
+      
+      // Add error message
+      const errorMessageObj = {
+        id: `error-${timestamp}`,
+        role: 'assistant',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        sources: [],
+        timestamp: timestamp + 1
+      };
+      
+      addMessage(errorMessageObj);
     } finally {
       setIsLoading(false);
     }
